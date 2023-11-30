@@ -14,13 +14,13 @@ from dateutil.parser import parse
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
-TOKEN_FILE = 'sec/token.pickle'
+TOKEN_FILE = 'config/token.pickle'
 
 
 # Loads SNS from ARN
 def load_sns_config():
     try:
-        with open('sec/config.json', 'r') as file:
+        with open('config/config.json', 'r') as file:
             return json.load(file)
     except Exception as e:
         logging.error("Error loading AWS creds: %s", e)
@@ -38,7 +38,7 @@ def load_google_credentials(token_file, scopes):
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file('sec/client_secret.json', SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file('config/client_secret.json', SCOPES)
             creds = flow.run_local_server(port=0)
         save_google_credentials(creds)
 

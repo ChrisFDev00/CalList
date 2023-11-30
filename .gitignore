@@ -1,4 +1,7 @@
-/sec
+/config/client_secret.json
+/config/config.json
+/config/token.pickle
 /venv
 /.idea
 debug.log
+.DS_Store
