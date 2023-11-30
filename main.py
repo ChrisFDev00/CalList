@@ -10,13 +10,15 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from dateutil.parser import parse
 
+# Enable logs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 TOKEN_FILE = 'sec/token.pickle'
 
 
-def load_aws_credentials():
+# Loads SNS from ARN
+def load_sns_config():
     try:
         with open('sec/config.json', 'r') as file:
             return json.load(file)
@@ -25,14 +27,13 @@ def load_aws_credentials():
         raise
 
 
+# Checks Google auth status, re-auths if necessary
 def load_google_credentials(token_file, scopes):
     creds = None
-    # Load from existing
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'rb') as token:
             creds = pickle.load(token)
 
-    # If invalid, re-auth
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -44,6 +45,7 @@ def load_google_credentials(token_file, scopes):
     return creds
 
 
+# Saves Google auth token if generated
 def save_google_credentials(token_file, creds):
     try:
         with open(token_file, 'wb') as token:
@@ -53,14 +55,17 @@ def save_google_credentials(token_file, creds):
         raise
 
 
+# Creates an SNS instance
 def create_sns():
     return boto3.client('sns', region_name='us-east-2')
 
 
+# Returns tomorrows date
 def get_date_tomorrow():
     return datetime.date.today() + datetime.timedelta(days=1)
 
 
+# Publishes message to SNS topic
 def publish_aws_message(sns_client, topic_arn, message, date):
     try:
         response = sns_client.publish(
@@ -74,6 +79,7 @@ def publish_aws_message(sns_client, topic_arn, message, date):
         raise
 
 
+# Returns events from Google Cal API based on a selected day
 def get_calendar_events(service, start, end):
     try:
         events_result = service.events().list(
@@ -90,6 +96,7 @@ def get_calendar_events(service, start, end):
         raise
 
 
+# Formats agenda to be published to SNS
 def format_events(events):
     agenda = ''
     for event in events:
@@ -113,7 +120,7 @@ def main():
     events = get_calendar_events(service, start_of_day, end_of_day)
     event_info = format_events(events) if events else "Free day"
 
-    aws_config = load_aws_credentials()
+    aws_config = load_sns_config()
     sns_client = create_sns()
     publish_aws_message(sns_client, aws_config['SNS_TOPIC_ARN'], event_info, date_tomorrow.strftime('%m-%d-%Y'))
 
