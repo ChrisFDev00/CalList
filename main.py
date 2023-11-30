@@ -52,15 +52,15 @@ def get_date_tomorrow():
     return datetime.date.today() + datetime.timedelta(days=1)
 
 
-def publish_aws_message(messages):
+def publish_aws_message(message, date):
     config = load_aws_credentials()
     client = create_sns()
 
     topic_arn = config['SNS_TOPIC_ARN']
     response = client.publish(
         TopicArn=topic_arn,
-        Message='message',
-        Subject='subject'
+        Message=message,
+        Subject=date
     )
     print(response)
 
@@ -73,38 +73,31 @@ def get_calendar_events(start, end):
                                            maxResults=10, singleEvents=True,
                                            orderBy='startTime')
                      .execute())
-    return events_result
-def main():
-    client = create_sns()
+    return events_result.get('items', [])
 
-    tomorrow = datetime.date.today() + datetime.timedelta(days=1)
+
+def main():
+
+    tomorrow = datetime.date.today() + datetime.timedelta(days=2)
     start_of_day = datetime.datetime.combine(tomorrow, datetime.time.min).isoformat() + 'Z'
     end_of_day = datetime.datetime.combine(tomorrow, datetime.time.max).isoformat() + 'Z'
 
-    messages = get_calendar_events(start_of_day, end_of_day)
+    events = get_calendar_events(start_of_day, end_of_day)
+
+    if not events:
+        event_info = "Free day"
+        publish_aws_message(event_info, tomorrow.strftime('%m-%d-%Y'))
+    else:
+        for event in events:
+            if 'dateTime' in event['start']:
+                event_time = parse(event['start']['dateTime'])
+                time_str = event_time.strftime('%H:%M')
+            else:
+                time_str = 'All Day'
+
+            event_info = "%s: %s" % (time_str, event['summary'])
 
 
-''' if not events:
-        print('No upcoming events found.')
-        return
-
-    for event in events:
-        # Check if the event has 'dateTime' (for events with specific times)
-        if 'dateTime' in event['start']:
-            # Parse the dateTime string
-            event_time = parse(event['start']['dateTime'])
-            # Format to extract just the time
-            time_str = event_time.strftime('%H:%M')
-        else:
-            # If it's an all-day event, set a placeholder or the date
-            time_str = 'All day'
-
-        print("%s, %s" % (time_str, event['summary']))
-
-    for event in events:
-        start = event['start']
-        print(event)
-'''
 
 if __name__ == '__main__':
     main()
